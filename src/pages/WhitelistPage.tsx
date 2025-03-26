@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AuthService } from '../services/auth.service';
+import { AuthService } from '../services/authService';
 
 const WhitelistPage = () => {
     const [emails, setEmails] = useState<string[]>([]);
