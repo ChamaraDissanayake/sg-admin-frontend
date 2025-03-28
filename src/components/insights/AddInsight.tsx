@@ -203,7 +203,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                             {insight?.video?.thumbnail && (
                                 <div className="mt-2">
                                     <p className="text-sm text-gray-500">Current thumbnail:</p>
-                                    <img src={`http://localhost:3000/${insight.video.thumbnail}`} alt="Current thumbnail" className="h-20 mt-1" />
+                                    <img src={`${import.meta.env.VITE_API_BASE_URL}/${insight.video.thumbnail}`} alt="Current thumbnail" className="h-20 mt-1" />
                                 </div>
                             )}
                         </div>
@@ -220,7 +220,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                             {insight?.video?.url && (
                                 <div className="mt-2">
                                     <p className="text-sm text-gray-500">Current video:</p>
-                                    <video src={`http://localhost:3000/${insight.video.url}`} controls className="h-20 mt-1" />
+                                    <video src={`${import.meta.env.VITE_API_BASE_URL}/${insight.video.url}`} controls className="h-20 mt-1" />
                                 </div>
                             )}
                         </div>
@@ -281,7 +281,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                             {insight?.article?.thumbnail && (
                                 <div className="mt-2">
                                     <p className="text-sm text-gray-500">Current thumbnail:</p>
-                                    <img src={`http://localhost:3000/${insight.article.thumbnail}`} alt="Current thumbnail" className="h-20 mt-1" />
+                                    <img src={`${import.meta.env.VITE_API_BASE_URL}/${insight.article.thumbnail}`} alt="Current thumbnail" className="h-20 mt-1" />
                                 </div>
                             )}
                         </div>

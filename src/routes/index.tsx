@@ -10,43 +10,42 @@ import InsightsPage from '../pages/InsightsPage';
 import WhitelistPage from '../pages/WhitelistPage';
 import ProfilePage from '../pages/ProfilePage';
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+    [
+        {
+            path: '/',
+            element: <PrivateRoutes />,
+            children: [
+                {
+                    element: <DashboardLayout />,
+                    children: [
+                        { index: true, element: <DashboardPage /> },
+                        { path: 'insights', element: <InsightsPage /> },
+                        { path: 'whitelist', element: <WhitelistPage /> },
+                        { path: 'profile', element: <ProfilePage /> },
+                    ],
+                },
+            ],
+        },
+        {
+            path: '/login',
+            element: <PublicRoutes />,
+            children: [{ index: true, element: <LoginPage /> }],
+        },
+        {
+            path: '/register',
+            element: <PublicRoutes />,
+            children: [{ index: true, element: <RegisterPage /> }],
+        },
+        {
+            path: '/forgot-password',
+            element: <PublicRoutes />,
+            children: [{ index: true, element: <ForgotPasswordPage /> }],
+        },
+    ],
     {
-        path: '/',
-        element: <PrivateRoutes />,
-        children: [
-            {
-                element: <DashboardLayout />,  // Layout wraps all dashboard pages
-                children: [
-                    { index: true, element: <DashboardPage /> },
-                    { path: 'insights', element: <InsightsPage /> },
-                    { path: 'whitelist', element: <WhitelistPage /> },
-                    { path: 'profile', element: <ProfilePage /> },
-                ],
-            },
-        ],
-    },
-    {
-        path: '/login',
-        element: <PublicRoutes />,
-        children: [
-            { index: true, element: <LoginPage /> },
-        ],
-    },
-    {
-        path: '/register',
-        element: <PublicRoutes />,
-        children: [
-            { index: true, element: <RegisterPage /> },
-        ],
-    },
-    {
-        path: '/forgot-password',
-        element: <PublicRoutes />,
-        children: [
-            { index: true, element: <ForgotPasswordPage /> },
-        ],
-    },
-]);
+        basename: '/admin', // Set the base path for routing
+    }
+);
 
 export default router;
