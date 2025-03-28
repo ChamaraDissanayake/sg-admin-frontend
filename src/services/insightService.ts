@@ -1,73 +1,106 @@
+import axios from 'axios';
 import api from './api';
 
 const insightService = {
-    /**
-     * Fetch all insights
-     */
     async fetchInsights() {
-        return api.get('/insights');
+        const response = await api.get('/insights');
+        return response.data;
     },
 
-    /**
-     * Fetch a single insight by ID
-     */
-    async fetchInsightById(id: number) {
-        return api.get(`/insights/${id}`);
+    async fetchInsightById(id: string) {
+        const response = await api.get(`/insights/${id}`);
+        return response.data;
     },
 
-    async addToWhitelist(email: string) {
-        return api.post('/whitelist', { email });
-    },
-
-    /**
-     * Create a new insight
-     */
     async createInsight(data: {
-        type: string,
-        category: string,
-        title: string,
-        description?: string,
-        time?: string,
-        video_url?: string,
-        thumbnail_url?: string,
-        content?: string
+        category: string;
+        video?: {
+            title?: string;
+            thumbnail?: string;
+            url?: string;
+        };
+        article?: {
+            title?: string;
+            description?: string;
+            thumbnail?: string;
+            content?: string;  // Now explicitly string
+            time?: number;
+        };
     }) {
-        // Removed the nested {data} object - sending data directly
-        return api.post('/insights', data);
+        try {
+            // No content transformation needed - send as-is
+            console.log();
+
+            const response = await api.post('/insights', data);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating insight:', error);
+            throw new Error(
+                'Failed to create insight'
+            );
+        }
     },
 
-    /**
-     * Update an existing insight
-     */
-    async updateInsight(id: number, data: {
-        type?: string,
-        category?: string,
-        title?: string,
-        description?: string,
-        time?: string,
-        video_url?: string,
-        thumbnail_url?: string,
-        content?: string
+    async updateInsight(id: string, data: {
+        category?: string;
+        video?: {
+            title?: string;
+            thumbnail?: string;
+            url?: string;
+        };
+        article?: {
+            title?: string;
+            description?: string;
+            thumbnail?: string;
+            content?: string;
+            time?: number;
+        };
     }) {
         return api.put(`/insights/${id}`, data);
     },
 
-    /**
-     * Delete an insight
-     */
-    async deleteInsight(id: number): Promise<void> {
-        await api.delete(`/insights/${id}`);
+    async deleteInsight(id: string) {
+        return api.delete(`/insights/${id}`);
     },
 
     /**
      * Upload a file (video or thumbnail)
      */
+    // insightService.ts
     async uploadFile(file: File) {
-        const formData = new FormData();
-        formData.append('file', file);
-        return api.post('/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        try {
+            // Client-side size validation (optional but good UX)
+            if (file.size > 50 * 1024 * 1024) {
+                throw new Error('File exceeds 50MB limit');
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await api.post('/files/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+                timeout: 300000 // 5 minute timeout for large files
+            });
+
+            // Handle duplicate response
+            if (response.data.isDuplicate) {
+                console.log('Using existing file:', response.data.fileId);
+            }
+
+            return response.data;
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error)) {
+                if (error.response?.status === 413) {
+                    throw new Error('File too large (max 50MB)');
+                }
+            }
+            if (error instanceof Error) {
+                throw error;
+            }
+            throw new Error('Unknown upload error occurred');
+        }
     },
 
     /**

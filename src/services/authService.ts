@@ -4,7 +4,7 @@ import Cookies from 'js-cookie';
 export const AuthService = {
 
     async login(email: string, password: string) {
-        const response = await api.post('/login', { email, password });
+        const response = await api.post('/auth/login', { email, password });
         if (response.data.token) {
             Cookies.set('authToken', response.data.token, {
                 expires: 7,
@@ -16,7 +16,7 @@ export const AuthService = {
     },
 
     async register(email: string, password: string) {
-        return api.post('/register', { email, password });
+        return api.post('/auth/register', { email, password });
     },
 
     logout() {

@@ -90,13 +90,13 @@ const WhitelistPage = () => {
                     <button
                         onClick={handleAddEmail}
                         disabled={!newEmail.trim()}
-                        className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="px-4 py-2 text-white bg-blue-800 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         Add Email
                     </button>
                 </div>
                 <p className="mt-2 text-sm text-gray-500">
-                    Only whitelisted emails can register accounts
+                    Only whitelisted emails can login to admin dashboard
                 </p>
             </div>
 
