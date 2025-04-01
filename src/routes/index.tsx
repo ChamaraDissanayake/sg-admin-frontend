@@ -43,9 +43,6 @@ const router = createBrowserRouter(
             children: [{ index: true, element: <ForgotPasswordPage /> }],
         },
     ],
-    {
-        basename: '/admin', // Set the base path for routing
-    }
 );
 
 export default router;
