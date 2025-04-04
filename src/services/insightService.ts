@@ -1,10 +1,20 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import api from './api';
+import { Insight } from '../types/Insight';
 
 const insightService = {
-    async fetchInsights() {
-        const response = await api.get('/insights');
-        return response.data;
+    async fetchInsights(params?: { page?: number; limit?: number }) {
+        const { page = 1, limit = 10 } = params || {};
+        const response = await api.get('/insights', {
+            params: {
+                page,
+                limit
+            }
+        });
+        return {
+            data: response.data.insights as Insight[],
+            total: response.data.pagination.total
+        };
     },
 
     async fetchInsightById(id: string) {
@@ -12,25 +22,8 @@ const insightService = {
         return response.data;
     },
 
-    async createInsight(data: {
-        category: string;
-        video?: {
-            title?: string;
-            thumbnail?: string;
-            url?: string;
-        };
-        article?: {
-            title?: string;
-            description?: string;
-            thumbnail?: string;
-            content?: string;  // Now explicitly string
-            time?: number;
-        };
-    }) {
+    async createInsight(data: Insight) {
         try {
-            // No content transformation needed - send as-is
-            console.log();
-
             const response = await api.post('/insights', data);
             return response.data;
         } catch (error) {
@@ -63,13 +56,9 @@ const insightService = {
         return api.delete(`/insights/${id}`);
     },
 
-    /**
-     * Upload a file (video or thumbnail)
-     */
-    // insightService.ts
-    async uploadFile(file: File) {
+    async uploadFile(file: File, config?: AxiosRequestConfig<FormData>) {
         try {
-            // Client-side size validation (optional but good UX)
+            // Client-side size validation
             if (file.size > 50 * 1024 * 1024) {
                 throw new Error('File exceeds 50MB limit');
             }
@@ -77,12 +66,16 @@ const insightService = {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await api.post('/files/upload', formData, {
+            // Merge custom config with default config
+            const mergedConfig: AxiosRequestConfig<FormData> = {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-                timeout: 300000 // 5 minute timeout for large files
-            });
+                timeout: 300000, // 5 minute timeout for large files
+                ...config // Spread the custom config last to allow overrides
+            };
+
+            const response = await api.post('/files/upload', formData, mergedConfig);
 
             // Handle duplicate response
             if (response.data.isDuplicate) {
