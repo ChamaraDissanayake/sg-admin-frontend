@@ -55,7 +55,17 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
     }, [videoUrl, isExternalVideo]);
 
     const handlePreview = (type: 'image' | 'video' | 'youtube', url: string) => {
-        setPreviewItem({ type, url });
+        if (type === 'youtube') {
+            // Extract video ID from various YouTube URL formats
+            const videoId = url.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)?.[1] ||
+                url.split('vi/')[1]?.split('/')[0] ||
+                url.split('v=')[1]?.split('&')[0];
+            if (videoId) {
+                setPreviewItem({ type, url: `https://www.youtube.com/watch?v=${videoId}` });
+            }
+        } else {
+            setPreviewItem({ type, url });
+        }
     };
 
     const closePreview = () => {
@@ -84,6 +94,13 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
         }, 0);
     };
 
+    const getMediaUrl = (url: string) => {
+        if (!url) return "";
+        return url.startsWith("uploads/")
+            ? `${import.meta.env.VITE_BASE_URL}/${url}`
+            : url;
+    };
+
     const handleSubmit = async () => {
         setError("");
         setUploadProgress(0);
@@ -104,7 +121,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                     return setError("Please provide a valid video URL");
                 }
             } else {
-                if ((!videoThumbnail || !videoFile) && mode === 'add') {
+                if ((!videoThumbnail || !videoFile) && mode === 'add' && !insight?.video?.url) {
                     return setError("Video requires both thumbnail and video file when uploading");
                 }
             }
@@ -115,9 +132,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
 
         try {
             let videoThumbnailUrl = insight?.video?.thumbnail || "";
-            let finalVideoUrl = "";
-
-            // Configure axios to track upload progress
+            let finalVideoUrl = insight?.video?.url || "";
 
             const config = {
                 onUploadProgress: (progressEvent: AxiosProgressEvent) => {
@@ -131,7 +146,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
             };
 
             if (isExternalVideo) {
-                finalVideoUrl = videoUrl!;
+                finalVideoUrl = videoUrl || "";
 
                 if (youtubeThumbnailUrl) {
                     videoThumbnailUrl = youtubeThumbnailUrl;
@@ -148,8 +163,6 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                 if (videoFile) {
                     const videoRes = await insightService.uploadFile(videoFile, config);
                     finalVideoUrl = videoRes.path;
-                } else if (insight?.video?.url && !insight.video.isExternal) {
-                    finalVideoUrl = insight.video.url;
                 }
             }
 
@@ -204,18 +217,12 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
         }
     };
 
-    const getMediaUrl = (url: string) => {
-        return url.startsWith("uploads/")
-            ? `${import.meta.env.VITE_BASE_URL}/${url}`
-            : url;
-    };
-
     return (
         <div className="max-w-4xl p-6 mx-auto bg-white shadow">
             {/* Preview Modal */}
             {previewItem && (
                 <PreviewModal onClose={closePreview}>
-                    <div className="p-8 bg-gray-300 rounded-lg max-w-[90vw] max-h-[90vh] overflow-auto">
+                    <div className="p-8 bg-gray-300 rounded-lg w-[90vw] max-h-[90vh]">
                         {previewItem.type === 'image' && (
                             <img
                                 src={previewItem.url}
@@ -234,7 +241,9 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                         {previewItem.type === 'youtube' && (
                             <div className="w-full aspect-w-16 aspect-h-9">
                                 <iframe
-                                    src={`https://www.youtube.com/embed/${previewItem.url.split('/vi/')[1].split('/')[0]}`}
+                                    src={`https://www.youtube.com/embed/${previewItem.url.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)?.[1] ||
+                                        previewItem.url.split('v=')[1]?.split('&')[0]
+                                        }`}
                                     className="w-full h-[80vh]"
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -315,118 +324,132 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                                     placeholder="Enter YouTube or other video URL"
                                     disabled={mode === 'view'}
                                 />
-                                {youtubeThumbnailUrl && (
-                                    <div className="mt-4">
-                                        <p className="mb-2 text-sm font-medium text-gray-700">YouTube Thumbnail Preview:</p>
-                                        <div
-                                            className="cursor-pointer"
-                                            onClick={() => handlePreview('image', youtubeThumbnailUrl)}
-                                        >
-                                            <img
-                                                src={youtubeThumbnailUrl}
-                                                alt="YouTube thumbnail preview"
-                                                className="w-full h-auto border border-gray-200 rounded-md max-h-64"
-                                                onError={(e) => {
-                                                    const youtubeId = youtubeThumbnailUrl.split('/vi/')[1].split('/')[0];
-                                                    e.currentTarget.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                                {insight?.video?.url && insight.video.isExternal && (
-                                    <div className="mt-4">
-                                        <p className="text-sm text-gray-500">Current video URL:</p>
-                                        <a
-                                            href={insight.video.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-600 hover:underline"
-                                        >
-                                            {insight.video.url}
-                                        </a>
-                                        <div
-                                            className="mt-2 cursor-pointer"
-                                            onClick={() => handlePreview('youtube', insight.video!.url!)}
-                                        >
-                                            <div className="relative">
-                                                {youtubeThumbnailUrl ? (
-                                                    <>
-                                                        <img
-                                                            src={youtubeThumbnailUrl}
-                                                            alt="YouTube thumbnail"
-                                                            className="w-full h-auto border border-gray-200 rounded-md max-h-64"
-                                                        />
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="flex items-center justify-center w-16 h-16 bg-red-600 rounded-full">
-                                                                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                                                </svg>
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="p-4 bg-gray-100 rounded-md">
-                                                        <p className="text-gray-500">Click to preview YouTube video</p>
-                                                    </div>
-                                                )}
+                                {(youtubeThumbnailUrl || (insight?.video?.url && insight.video.isExternal)) && (
+                                    <div className="flex flex-col gap-4 mt-4 md:flex-row">
+                                        {youtubeThumbnailUrl && (
+                                            <div className="flex-1">
+                                                <p className="mb-2 text-sm font-medium text-gray-700">YouTube Thumbnail Preview:</p>
+                                                <div
+                                                    className="cursor-pointer"
+                                                    onClick={() => handlePreview('image', youtubeThumbnailUrl)}
+                                                >
+                                                    <img
+                                                        src={youtubeThumbnailUrl}
+                                                        alt="YouTube thumbnail preview"
+                                                        className="w-full h-auto max-w-xs border border-gray-200 rounded-md"
+                                                        onError={(e) => {
+                                                            const youtubeId = (videoUrl ?? "").match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)?.[1];
+                                                            if (youtubeId) {
+                                                                e.currentTarget.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
+                                        {insight?.video?.url && insight.video.isExternal && (
+                                            <div className="flex-1">
+                                                <p className="text-sm text-gray-500">Current video:</p>
+                                                <div
+                                                    className="mt-2 cursor-pointer"
+                                                    onClick={() => {
+                                                        const videoId = insight.video!.url!.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)?.[1];
+                                                        if (videoId) {
+                                                            handlePreview('youtube', `https://www.youtube.com/watch?v=${videoId}`);
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="relative self-center max-w-xs mx-auto"> {/* Added max-w-xs and mx-auto here */}
+                                                        {youtubeThumbnailUrl ? (
+                                                            <>
+                                                                <img
+                                                                    src={youtubeThumbnailUrl}
+                                                                    alt="YouTube thumbnail"
+                                                                    className="w-full h-auto border border-gray-200 rounded-md"
+                                                                />
+                                                                <div className="absolute top-0 bottom-0 left-0 right-0 flex items-center justify-center">
+                                                                    <div className="flex items-center justify-center w-16 h-16 bg-red-600 rounded-full">
+                                                                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                                                        </svg>
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="p-4 bg-gray-100 rounded-md"> {/* Removed max-w-xs from here */}
+                                                                <p className="text-gray-500">Click to preview YouTube video</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
                         ) : (
                             <>
-                                <div>
-                                    <label className="block mb-2 font-medium text-gray-700">Video Thumbnail</label>
-                                    <input
-                                        type="file"
-                                        onChange={(e) => setVideoThumbnail(e.target.files?.[0] || null)}
-                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                        accept="image/*"
-                                        disabled={mode === 'view'}
-                                    />
-                                    {insight?.video?.thumbnail && !insight.video.isExternal && (
-                                        <div className="mt-4">
-                                            <p className="text-sm text-gray-500">Current thumbnail:</p>
-                                            <div
-                                                className="cursor-pointer"
-                                                onClick={() => handlePreview('image', getMediaUrl(insight.video!.thumbnail!))}
-                                            >
-                                                <img
-                                                    src={getMediaUrl(insight.video.thumbnail)}
-                                                    alt="Current thumbnail"
-                                                    className="w-full h-auto mt-2 border border-gray-200 rounded-md max-h-64"
-                                                />
+                                <div className="flex flex-col gap-4 md:flex-row">
+                                    <div className="flex-1">
+                                        <label className="block mb-2 font-medium text-gray-700">Video Thumbnail</label>
+                                        <input
+                                            type="file"
+                                            onChange={(e) => setVideoThumbnail(e.target.files?.[0] || null)}
+                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                            accept="image/*"
+                                            disabled={mode === 'view'}
+                                        />
+                                        {insight?.video?.thumbnail && !insight.video.isExternal && (
+                                            <div className="mt-4">
+                                                <p className="text-sm text-gray-500">Current thumbnail:</p>
+                                                <div
+                                                    className="cursor-pointer"
+                                                    onClick={() => handlePreview('image', getMediaUrl(insight.video!.thumbnail!))}
+                                                >
+                                                    <img
+                                                        src={getMediaUrl(insight.video.thumbnail)}
+                                                        alt="Current thumbnail"
+                                                        className="w-full h-auto max-w-xs mt-2 border border-gray-200 rounded-md"
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
 
-                                <div>
-                                    <label className="block mb-2 font-medium text-gray-700">Video File</label>
-                                    <input
-                                        type="file"
-                                        onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                        accept="video/*"
-                                        disabled={mode === 'view'}
-                                    />
-                                    {insight?.video?.url && !insight.video.isExternal && (
-                                        <div className="mt-4">
-                                            <p className="text-sm text-gray-500">Current video:</p>
-                                            <div
-                                                className="cursor-pointer"
-                                                onClick={() => handlePreview('video', getMediaUrl(insight.video!.url!))}
-                                            >
-                                                <video
-                                                    src={getMediaUrl(insight.video.url)}
-                                                    className="w-full h-auto mt-2 border border-gray-200 rounded-md max-h-64"
-                                                />
-                                                <div className="mt-1 text-sm text-center text-gray-500">Click to play video</div>
+                                    <div className="flex-1">
+                                        <label className="block mb-2 font-medium text-gray-700">Video File</label>
+                                        <input
+                                            type="file"
+                                            onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                            accept="video/*"
+                                            disabled={mode === 'view'}
+                                        />
+                                        {insight?.video?.url && !insight.video.isExternal && (
+                                            <div className="mt-4">
+                                                <p className="text-sm text-gray-500">Current video:</p>
+                                                <div
+                                                    className="cursor-pointer"
+                                                    onClick={() => handlePreview('video', getMediaUrl(insight.video!.url!))}
+                                                >
+                                                    <div className="relative max-w-xs mx-auto">
+                                                        <video
+                                                            src={getMediaUrl(insight.video.url)}
+                                                            className="w-full h-auto mt-2 border border-gray-200 rounded-md"
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                            <div className="flex items-center justify-center w-16 h-16 bg-red-600 rounded-full opacity-80">
+                                                                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                                                </svg>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-1 text-sm text-center text-gray-500">Click to play video</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -494,7 +517,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                                         <img
                                             src={getMediaUrl(insight.article.thumbnail)}
                                             alt="Current thumbnail"
-                                            className="w-full h-auto mt-2 border border-gray-200 rounded-md max-h-64"
+                                            className="w-full h-auto max-w-xs mt-2 border border-gray-200 rounded-md"
                                         />
                                     </div>
                                 </div>
