@@ -333,25 +333,27 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                                                     className="cursor-pointer"
                                                     onClick={() => handlePreview('image', youtubeThumbnailUrl)}
                                                 >
-                                                    <img
-                                                        src={youtubeThumbnailUrl}
-                                                        alt="YouTube thumbnail preview"
-                                                        className="w-full h-auto max-w-xs border border-gray-200 rounded-md"
-                                                        onError={(e) => {
-                                                            const youtubeId = (videoUrl ?? "").match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)?.[1];
-                                                            if (youtubeId) {
-                                                                e.currentTarget.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-                                                            }
-                                                        }}
-                                                    />
+                                                    <div className="relative self-center max-w-xs mx-auto">
+                                                        <img
+                                                            src={youtubeThumbnailUrl}
+                                                            alt="YouTube thumbnail preview"
+                                                            className="w-full h-auto max-w-xs border border-gray-200 rounded-md"
+                                                            onError={(e) => {
+                                                                const youtubeId = (videoUrl ?? "").match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)?.[1];
+                                                                if (youtubeId) {
+                                                                    e.currentTarget.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
                                         {insight?.video?.url && insight.video.isExternal && (
                                             <div className="flex-1">
-                                                <p className="text-sm text-gray-500">Current video:</p>
+                                                <p className="mb-2 text-sm text-gray-500">Current video:</p>
                                                 <div
-                                                    className="mt-2 cursor-pointer"
+                                                    className="cursor-pointer"
                                                     onClick={() => {
                                                         const videoId = insight.video!.url!.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)?.[1];
                                                         if (videoId) {
@@ -406,11 +408,13 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                                                     className="cursor-pointer"
                                                     onClick={() => handlePreview('image', getMediaUrl(insight.video!.thumbnail!))}
                                                 >
-                                                    <img
-                                                        src={getMediaUrl(insight.video.thumbnail)}
-                                                        alt="Current thumbnail"
-                                                        className="w-full h-auto max-w-xs mt-2 border border-gray-200 rounded-md"
-                                                    />
+                                                    <div className="relative self-center max-w-xs mx-auto">
+                                                        <img
+                                                            src={getMediaUrl(insight.video.thumbnail)}
+                                                            alt="Current thumbnail"
+                                                            className="w-full h-auto max-w-xs mt-2 border border-gray-200 rounded-md"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -514,11 +518,13 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                                         className="cursor-pointer"
                                         onClick={() => handlePreview('image', getMediaUrl(insight.article!.thumbnail!))}
                                     >
-                                        <img
-                                            src={getMediaUrl(insight.article.thumbnail)}
-                                            alt="Current thumbnail"
-                                            className="w-full h-auto max-w-xs mt-2 border border-gray-200 rounded-md"
-                                        />
+                                        <div className="relative self-center max-w-xs mx-auto">
+                                            <img
+                                                src={getMediaUrl(insight.article.thumbnail)}
+                                                alt="Current thumbnail"
+                                                className="w-full h-auto max-w-xs mt-2 border border-gray-200 rounded-md"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
