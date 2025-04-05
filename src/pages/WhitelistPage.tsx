@@ -1,30 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AuthService } from '../services/authService';
 
 const WhitelistPage = () => {
     const [emails, setEmails] = useState<string[]>([]);
+    const [pendings, setPendingEmails] = useState<string[]>([]);
     const [newEmail, setNewEmail] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    useEffect(() => {
-        fetchWhitelist();
-    }, []);
-
-    const fetchWhitelist = async () => {
+    const fetchWhitelist = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
-            const data = await AuthService.getWhitelist();
-            setEmails(data);
+            const [whitelistData, pendingData] = await Promise.all([
+                AuthService.getWhitelist(),
+                AuthService.getPendingWhitelist()
+            ]);
+            setEmails(whitelistData);
+            setPendingEmails(pendingData);
+            console.log('Chamara', whitelistData, pendingData);
         } catch (err) {
-            setError('Failed to load whitelist');
+            setError('Failed to load whitelist data');
             console.error(err);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchWhitelist();
+    }, [fetchWhitelist]);
 
     const handleAddEmail = async () => {
         if (!newEmail.trim()) return;
@@ -59,6 +65,32 @@ const WhitelistPage = () => {
             setError('Failed to remove email');
         }
     };
+
+    // Pending section
+    const handleApproveEmail = async (email: string) => {
+        try {
+            await AuthService.addToWhitelist(email);
+            setSuccess(`${email} approved and added to whitelist`);
+            fetchWhitelist();
+        } catch (err) {
+            setError(`Failed to approve ${email}`);
+            console.error(err);
+        }
+    };
+
+    const handleRemovePending = async (email: string) => {
+        if (!window.confirm(`Are you sure to remove ${email} from users?`)) return;
+
+        try {
+            await AuthService.removeUser(email);
+            setSuccess(`${email} removed from pending users`);
+            fetchWhitelist();
+        } catch (err) {
+            setError(`Failed to remove ${email}`);
+            console.error(err);
+        }
+    };
+
 
     return (
         <div className="p-6 bg-white rounded-lg shadow">
@@ -99,6 +131,53 @@ const WhitelistPage = () => {
                     Only whitelisted emails can login to admin dashboard
                 </p>
             </div>
+
+            {pendings.length > 0 && (
+                <div className="mb-10">
+                    <h2 className="mb-4 text-lg font-semibold">
+                        Pending Emails ({pendings.length})
+                    </h2>
+
+                    <div className="overflow-hidden border border-yellow-300 rounded-lg">
+                        <table className="min-w-full divide-y divide-yellow-200">
+                            <thead className="bg-yellow-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-yellow-600 uppercase">
+                                        Email
+                                    </th>
+                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-right text-yellow-600 uppercase">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-yellow-100">
+                                {pendings.map((email) => (
+                                    <tr key={email}>
+                                        <td className="px-6 py-4 font-mono text-sm text-yellow-800 whitespace-nowrap">
+                                            {email}
+                                        </td>
+                                        <td className="px-6 py-4 space-x-4 text-sm font-medium text-right whitespace-nowrap">
+                                            <button
+                                                onClick={() => handleApproveEmail(email)}
+                                                className="text-green-600 hover:text-green-800"
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleRemovePending(email)}
+                                                className="text-red-600 hover:text-red-800"
+                                            >
+                                                Remove User
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
 
             {/* Email List */}
             <div>

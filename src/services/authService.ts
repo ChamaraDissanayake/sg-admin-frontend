@@ -4,7 +4,7 @@ import Cookies from 'js-cookie';
 export const AuthService = {
 
     async login(email: string, password: string) {
-        const response = await api.post('/auth/login', { email, password });
+        const response = await api.post('/user/login', { email, password });
         if (response.data.token) {
             Cookies.set('authToken', response.data.token, {
                 expires: 7,
@@ -16,7 +16,7 @@ export const AuthService = {
     },
 
     async register(email: string, password: string) {
-        return api.post('/auth/register', { email, password });
+        return api.post('/user/register', { email, password });
     },
 
     logout() {
@@ -34,6 +34,11 @@ export const AuthService = {
         return response.data;
     },
 
+    async getPendingWhitelist() {
+        const response = await api.get('/whitelist/pending');
+        return response.data;
+    },
+
     async addToWhitelist(email: string) {
         return api.post('/whitelist', { email });
     },
@@ -41,4 +46,8 @@ export const AuthService = {
     async removeFromWhitelist(email: string) {
         return api.delete(`/whitelist/${encodeURIComponent(email)}`);
     },
+
+    async removeUser(email: string) {
+        return api.delete(`/user/delete`, { data: { email } });
+    }
 };

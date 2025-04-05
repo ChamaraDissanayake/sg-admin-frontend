@@ -5,6 +5,14 @@ const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
 });
 
+// List of routes that shouldn't trigger 401 redirect
+const AUTH_ROUTES = [
+    '/user/login',
+    '/user/register',
+    '/user/forgot-password',
+    // Add other auth routes as needed
+];
+
 api.interceptors.request.use((config) => {
     const token = Cookies.get('authToken');
     if (token) {
@@ -16,10 +24,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const isAuthRoute = AUTH_ROUTES.some(route =>
+            error.config.url?.includes(route)
+        );
+
+        if (error.response?.status === 401 && !isAuthRoute) {
             Cookies.remove('authToken');
             window.location.href = '/login';
         }
+
         return Promise.reject(error);
     }
 );
