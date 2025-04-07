@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import AddInsight from "../components/insights/AddInsight";
+import { useState, useEffect, useCallback } from "react";
+import InsightForm from "../components/insights/InsightForm";
 import insightService from "../services/insightService";
 import Modal from "../components/shared/Modal";
 import { Insight } from "../types/Insight";
@@ -18,44 +18,49 @@ const InsightsPage = () => {
     const [insightToDelete, setInsightToDelete] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const [totalRecords, setTotalRecords] = useState(0)
+    const [totalRecords, setTotalRecords] = useState(0);
+
+    const refreshInsights = useCallback(async (resetPage = true) => {
+        try {
+            const targetPage = resetPage ? 1 : page;
+
+            if (resetPage) {
+                setLoading(true);
+            } else {
+                setLoadingMore(true);
+            }
+
+            const response = await insightService.fetchInsights({
+                page: targetPage,
+                limit: PAGE_SIZE
+            });
+
+            if (resetPage) {
+                setInsights(response.data);
+                setPage(1);
+            } else {
+                setInsights(prev => [...prev, ...response.data]);
+            }
+
+            setTotalRecords(response.total);
+            setHasMore(response.data.length === PAGE_SIZE &&
+                response.data.length < response.total);
+        } catch (err) {
+            setError("Failed to fetch insights");
+            console.error(err);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    }, [page]);  // page is the only dependency used inside the function
 
     useEffect(() => {
-        const fetchInsights = async () => {
-            try {
-                setLoading(true);
-                const response = await insightService.fetchInsights({ page: 1, limit: PAGE_SIZE });
-                setInsights(response.data);
-                setTotalRecords(response.total);
-                setHasMore(response.data?.length < response.total);
-            } catch (err) {
-                setError("Failed to fetch insights");
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchInsights();
-    }, []);
+        refreshInsights(true);
+    }, [refreshInsights]);  // Now properly included in dependencies
 
     const loadMoreInsights = async () => {
         if (!hasMore || loadingMore) return;
-
-        try {
-            setLoadingMore(true);
-            const nextPage = page + 1;
-            const response = await insightService.fetchInsights({ page: nextPage, limit: PAGE_SIZE });
-
-            setInsights(prev => [...prev, ...response.data]);
-            setPage(nextPage);
-            setHasMore(response.data?.length === PAGE_SIZE);
-        } catch (err) {
-            setError("Failed to load more insights");
-            console.error(err);
-        } finally {
-            setLoadingMore(false);
-        }
+        await refreshInsights(false);
     };
 
     const handleAddClick = () => {
@@ -90,39 +95,31 @@ const InsightsPage = () => {
     };
 
     const confirmDelete = async () => {
-        if (!insightToDelete) {
-            setError("No insight selected for deletion");
-            return;
-        }
+        if (!insightToDelete) return;
 
         try {
-            await insightService.deleteInsight(insightToDelete);
-            setInsights(prev => prev.filter(insight => insight.id !== insightToDelete));
+            // Optimistic update
+            setInsights(prev => prev.filter(i => i.id !== insightToDelete));
+            setTotalRecords(prev => prev - 1);
             setShowDeleteConfirm(false);
+
+            // Server sync
+            await insightService.deleteInsight(insightToDelete);
+
+            // Final consistency check
+            await refreshInsights(true);
         } catch (err) {
+            // Rollback on error
+            console.log(err);
+
+            refreshInsights(true);
             setError("Failed to delete insight");
-            console.error(err);
         }
     };
 
     const handleFormSubmitSuccess = () => {
         setShowForm(false);
-        // Reset to first page to show the latest data
-        const refreshInsights = async () => {
-            try {
-                setLoading(true);
-                const response = await insightService.fetchInsights({ page: 1, limit: PAGE_SIZE });
-                setInsights(response.data);
-                setPage(1);
-                setHasMore(response.data?.length === PAGE_SIZE);
-            } catch (err) {
-                setError("Failed to refresh insights");
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        refreshInsights();
+        refreshInsights(true);
     };
 
     const closeModal = () => {
@@ -137,6 +134,12 @@ const InsightsPage = () => {
             {error && (
                 <div className="p-4 mb-4 text-red-700 bg-red-100 rounded-md">
                     {error}
+                    <button
+                        onClick={() => setError("")}
+                        className="float-right font-bold"
+                    >
+                        &times;
+                    </button>
                 </div>
             )}
 
@@ -150,13 +153,15 @@ const InsightsPage = () => {
             </div>
 
             {loading ? (
-                <div>Loading insights...</div>
+                <div className="flex justify-center p-8">
+                    <div className="w-8 h-8 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
+                </div>
             ) : (
                 <div className="overflow-x-auto">
                     <table className="min-w-full bg-white border border-gray-200">
                         <thead>
                             <tr className="bg-gray-300">
-                                <th></th>
+                                <th className="px-4 py-2 border">#</th>
                                 <th className="px-4 py-2 border">Category</th>
                                 <th className="px-4 py-2 border">Type</th>
                                 <th className="px-4 py-2 border">Title</th>
@@ -166,7 +171,7 @@ const InsightsPage = () => {
                         <tbody>
                             {insights?.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="py-4 text-center text-gray-500">
+                                    <td colSpan={5} className="py-4 text-center text-gray-500">
                                         No insights found
                                     </td>
                                 </tr>
@@ -176,11 +181,11 @@ const InsightsPage = () => {
                                         <td className="px-4 py-2 border">{index + 1}</td>
                                         <td className="px-4 py-2 border">{insight.category}</td>
                                         <td className="px-4 py-2 border">
-                                            {insight.video?.thumbnail && insight.article?.thumbnail ? (
+                                            {insight.video?.url && insight.article?.title ? (
                                                 'Full'
-                                            ) : insight.video?.thumbnail ? (
+                                            ) : insight.video?.url ? (
                                                 'Video Only'
-                                            ) : insight.article?.thumbnail ? (
+                                            ) : insight.article?.title ? (
                                                 'Article Only'
                                             ) : (
                                                 'Unknown'
@@ -216,10 +221,9 @@ const InsightsPage = () => {
                         </tbody>
                     </table>
 
-
                     <div className="flex justify-between mt-4">
                         <div className="text-sm text-gray-500">
-                            Showing {insights?.length} out of {totalRecords} insights
+                            Showing {insights.length} out of {totalRecords} insights
                         </div>
                         {hasMore && (
                             <button
@@ -227,16 +231,23 @@ const InsightsPage = () => {
                                 disabled={loadingMore}
                                 className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-blue-400"
                             >
-                                {loadingMore ? 'Loading...' : 'Load More'}
+                                {loadingMore ? (
+                                    <span className="flex items-center">
+                                        <svg className="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Loading...
+                                    </span>
+                                ) : 'Load More'}
                             </button>
                         )}
                     </div>
-
                 </div>
             )}
 
             <Modal isOpen={showForm} onClose={closeModal} title={`${action === 'add' ? 'Add' : action === 'edit' ? 'Edit' : 'View'} Insight`}>
-                <AddInsight
+                <InsightForm
                     insight={currentInsight}
                     mode={action}
                     onSuccess={handleFormSubmitSuccess}

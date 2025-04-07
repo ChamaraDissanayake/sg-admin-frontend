@@ -19,7 +19,6 @@ const WhitelistPage = () => {
             ]);
             setEmails(whitelistData);
             setPendingEmails(pendingData);
-            console.log('Chamara', whitelistData, pendingData);
         } catch (err) {
             setError('Failed to load whitelist data');
             console.error(err);

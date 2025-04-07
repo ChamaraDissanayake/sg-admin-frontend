@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import insightService from "../../services/insightService";
 import axios, { AxiosProgressEvent } from "axios";
 import { Insight } from "../../types/Insight";
 import PreviewModal from "../shared/PreviewModal";
+import { useAutoResizeTextarea } from "../../hooks/expandingTextArea";
 
 type AddInsightProps = {
     insight?: Insight | null;
@@ -11,7 +12,7 @@ type AddInsightProps = {
     onCancel?: () => void;
 };
 
-const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddInsightProps) => {
+const InsightForm = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddInsightProps) => {
     // Form state
     const [category, setCategory] = useState(insight?.category || "AI");
     const [videoTitle, setVideoTitle] = useState(insight?.video?.title || "");
@@ -35,7 +36,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
         type: 'image' | 'video' | 'youtube';
         url: string;
     } | null>(null);
-    const htmlTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const htmlTextareaRef = useAutoResizeTextarea(articleContent);
 
     // Extract YouTube video ID and set thumbnail URL
     useEffect(() => {
@@ -79,18 +80,20 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
         const startPos = textarea.selectionStart;
         const endPos = textarea.selectionEnd;
         const selectedText = textarea.value.substring(startPos, endPos);
+        const beforeText = textarea.value.substring(0, startPos);
+        const afterText = textarea.value.substring(endPos);
 
-        const newValue =
-            textarea.value.substring(0, startPos) +
-            startTag + selectedText + endTag +
-            textarea.value.substring(endPos);
-
+        const newValue = beforeText + startTag + selectedText + endTag + afterText;
         setArticleContent(newValue);
 
+        // Calculate new cursor position
+        const newCursorPos = startPos + startTag.length;
+
+        // Use setTimeout to ensure the DOM has updated
         setTimeout(() => {
             textarea.focus();
-            textarea.selectionStart = startPos + startTag.length;
-            textarea.selectionEnd = endPos + startTag.length;
+            textarea.selectionStart = newCursorPos;
+            textarea.selectionEnd = newCursorPos + selectedText.length;
         }, 0);
     };
 
@@ -144,30 +147,43 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                     }
                 }
             };
-
+            // Handle video updates
             if (isExternalVideo) {
-                finalVideoUrl = videoUrl || "";
+                // Only update video URL if it's changed and not empty
+                if (videoUrl && videoUrl !== insight?.video?.url) {
+                    finalVideoUrl = videoUrl;
 
-                if (youtubeThumbnailUrl) {
-                    videoThumbnailUrl = youtubeThumbnailUrl;
-                } else if (insight?.video?.thumbnail) {
-                    videoThumbnailUrl = insight.video.thumbnail;
+                    // Update thumbnail only if we have a new YouTube URL
+                    if (youtubeThumbnailUrl) {
+                        videoThumbnailUrl = youtubeThumbnailUrl;
+                    }
+                }
+                // If URL didn't change but we have a thumbnail file, use that
+                else if (videoThumbnail) {
+                    const thumbnailRes = await insightService.uploadFile(videoThumbnail, config);
+                    videoThumbnailUrl = thumbnailRes.path;
                 }
             } else {
-                // Handle file uploads with progress tracking
+                // For uploaded videos - only update if new files are provided
                 if (videoThumbnail) {
                     const thumbnailRes = await insightService.uploadFile(videoThumbnail, config);
                     videoThumbnailUrl = thumbnailRes.path;
+                } else if (insight?.video?.thumbnail && !insight.video.isExternal) {
+                    // Keep existing thumbnail if no new one provided
+                    videoThumbnailUrl = insight.video.thumbnail;
                 }
 
                 if (videoFile) {
                     const videoRes = await insightService.uploadFile(videoFile, config);
                     finalVideoUrl = videoRes.path;
+                } else if (insight?.video?.url && !insight.video.isExternal) {
+                    // Keep existing video if no new one provided
+                    finalVideoUrl = insight.video.url;
                 }
             }
 
+            // Handle article thumbnail - only update if changed
             let articleThumbnailUrl = insight?.article?.thumbnail || "";
-
             if (articleThumbnail) {
                 const thumbnailRes = await insightService.uploadFile(articleThumbnail, config);
                 articleThumbnailUrl = thumbnailRes.path;
@@ -215,6 +231,30 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
             setIsUploading(false);
             setUploadProgress(0);
         }
+    };
+
+    const insertList = () => {
+        if (!htmlTextareaRef.current) return;
+
+        const textarea = htmlTextareaRef.current;
+        const startPos = textarea.selectionStart;
+        const endPos = textarea.selectionEnd;
+        const beforeText = textarea.value.substring(0, startPos);
+        const afterText = textarea.value.substring(endPos);
+
+        const listHtml = `<ul>\n  <li>First item</li>\n  <li>Second item</li>\n  <li>Third item</li>\n</ul>`;
+        const newValue = beforeText + listHtml + afterText;
+        setArticleContent(newValue);
+
+        // Calculate positions for cursor placement
+        const firstLiPos = (beforeText + `<ul>\n  <li>`).length;
+        const firstLiEndPos = firstLiPos + "First item".length;
+
+        setTimeout(() => {
+            textarea.focus();
+            textarea.selectionStart = firstLiPos;
+            textarea.selectionEnd = firstLiEndPos;
+        }, 0);
     };
 
     return (
@@ -560,7 +600,7 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                                             Italic
                                         </button>
                                         <button
-                                            onClick={() => insertHtmlTag('<ul><li>', '</li></ul>')}
+                                            onClick={insertList}
                                             className="px-2 py-1 text-xs bg-white border rounded"
                                         >
                                             List
@@ -577,9 +617,10 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
                                     ref={htmlTextareaRef}
                                     value={articleContent}
                                     onChange={(e) => setArticleContent(e.target.value)}
-                                    className="w-full h-40 p-2 font-mono text-sm border border-gray-300 rounded-md"
+                                    className="w-full min-h-[160px] p-2 font-mono text-sm border border-gray-300 rounded-md"
                                     placeholder="Enter HTML content"
                                     disabled={mode === 'view'}
+                                    style={{ resize: 'vertical' }} // Allow vertical resizing
                                 />
                                 <div className="p-2 text-xs text-gray-500 rounded bg-gray-50">
                                     <p>Preview:</p>
@@ -640,4 +681,4 @@ const AddInsight = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddIn
     );
 };
 
-export default AddInsight;
+export default InsightForm;
