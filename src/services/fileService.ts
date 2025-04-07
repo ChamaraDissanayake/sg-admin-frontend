@@ -25,7 +25,7 @@ const fileService = {
 
             // Handle duplicate response
             if (response.data.isDuplicate) {
-                console.log('Using existing file:', response.data.fileId);
+                console.log('Using existing file:', response.data.path);
             }
 
             return response.data;

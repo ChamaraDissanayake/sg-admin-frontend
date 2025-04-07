@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import teamMemberService from "../../services/teamMemberService";
+import fileService from "../../services/fileService";
 import axios from "axios";
-import PreviewModal from "../shared/PreviewModal";
 import { TeamMember } from "../../types/TeamMember";
 
 type TeamMemberFormProps = {
@@ -16,38 +16,25 @@ const TeamMemberForm = ({ member = null, mode = 'add', onSuccess, onCancel }: Te
     const [position, setPosition] = useState(member?.position || "");
     const [bio, setBio] = useState(member?.bio || "");
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState(member?.imagePath || "");
+    const [imagePreview, setImagePreview] = useState<string | null>(null); // Image preview state
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
-    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-    const getMediaUrl = (url: string) => {
-        if (!url) return "";
-        return url.startsWith("uploads/")
-            ? `${import.meta.env.VITE_BASE_URL}/${url}`
-            : url;
-    };
-
-    const handlePreview = () => {
-        if (imagePreview) {
-            setPreviewImage(getMediaUrl(imagePreview));
+    // Set image preview from the existing member (if in edit or view mode)
+    useEffect(() => {
+        if (mode !== 'add' && member?.imagePath) {
+            setImagePreview(member.imagePath);
         }
-    };
-
-    const closePreview = () => {
-        setPreviewImage(null);
-    };
+    }, [mode, member?.imagePath]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setImageFile(file);
 
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            // Create a temporary URL for the preview image
+            const previewUrl = URL.createObjectURL(file);
+            setImagePreview(previewUrl);
         }
     };
 
@@ -68,7 +55,7 @@ const TeamMemberForm = ({ member = null, mode = 'add', onSuccess, onCancel }: Te
             let imagePath = member?.imagePath || "";
 
             if (imageFile) {
-                const imageRes = await teamMemberService.uploadImage(imageFile);
+                const imageRes = await fileService.uploadFile(imageFile);
                 imagePath = imageRes.path;
             }
 
@@ -102,18 +89,6 @@ const TeamMemberForm = ({ member = null, mode = 'add', onSuccess, onCancel }: Te
 
     return (
         <div className="max-w-4xl p-6 mx-auto bg-white shadow">
-            {previewImage && (
-                <PreviewModal onClose={closePreview}>
-                    <div className="p-8 bg-gray-300 rounded-lg w-[90vw] max-h-[90vh]">
-                        <img
-                            src={previewImage}
-                            alt="Preview"
-                            className="max-w-full max-h-[80vh] mx-auto"
-                        />
-                    </div>
-                </PreviewModal>
-            )}
-
             <h1 className="mb-6 text-2xl font-bold text-gray-800">
                 {mode === 'add' ? 'Add' : mode === 'edit' ? 'Edit' : 'View'} Team Member
             </h1>
@@ -163,35 +138,39 @@ const TeamMemberForm = ({ member = null, mode = 'add', onSuccess, onCancel }: Te
                             />
                         </div>
 
-                        <div>
-                            <label className="block mb-2 font-medium text-gray-700">Profile Image</label>
-                            {mode !== 'view' && (
+                        {mode !== 'view' && (
+                            <div>
+                                <label className="block mb-2 font-medium text-gray-700">Profile Image</label>
                                 <input
                                     type="file"
                                     onChange={handleImageChange}
                                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                     accept="image/*"
                                 />
-                            )}
 
-                            {(imagePreview || member?.imagePath) && (
-                                <div className="mt-4">
-                                    <p className="text-sm text-gray-500">Current image:</p>
-                                    <div
-                                        className="cursor-pointer"
-                                        onClick={handlePreview}
-                                    >
-                                        <div className="relative self-center max-w-xs mx-auto">
-                                            <img
-                                                src={imagePreview || getMediaUrl(member?.imagePath || "")}
-                                                alt="Current profile"
-                                                className="object-cover w-32 h-32 mt-2 border border-gray-200 rounded-full"
-                                            />
-                                        </div>
+                                {/* Image preview */}
+                                {imagePreview && (
+                                    <div className="mt-4">
+                                        <img
+                                            src={imagePreview}
+                                            alt="Image preview"
+                                            className="object-cover w-32 h-32 rounded-md"
+                                        />
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* In View mode, show the current image if available */}
+                        {mode === 'view' && imagePreview && (
+                            <div className="mt-4">
+                                <img
+                                    src={imagePreview}
+                                    alt="Current profile image"
+                                    className="object-cover w-32 h-32 rounded-md"
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
