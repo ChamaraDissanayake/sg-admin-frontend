@@ -9,8 +9,8 @@ const Sidebar = () => {
     const navItems = [
         { name: 'Home', path: '/' },
         { name: 'Insights', path: '/insights' },
+        { name: 'Team', path: '/team' },
         { name: 'Whitelist Emails', path: '/whitelist' },
-        { name: 'Profile', path: '/profile' },
     ];
 
     return (
@@ -23,8 +23,8 @@ const Sidebar = () => {
                             <Link
                                 to={item.path}
                                 className={`block px-4 py-2 rounded-md ${location.pathname === item.path
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'text-gray-300 hover:bg-gray-100 hover:text-gray-900'
+                                    ? 'bg-blue-50 text-blue-600'
+                                    : 'text-gray-300 hover:bg-gray-100 hover:text-gray-900'
                                     }`}
                             >
                                 {item.name}

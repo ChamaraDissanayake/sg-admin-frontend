@@ -8,7 +8,7 @@ import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import InsightsPage from '../pages/InsightsPage';
 import WhitelistPage from '../pages/WhitelistPage';
-import ProfilePage from '../pages/ProfilePage';
+import TeamMembersPage from '../pages/TeamMembersPage';
 
 const router = createBrowserRouter(
     [
@@ -21,8 +21,8 @@ const router = createBrowserRouter(
                     children: [
                         { index: true, element: <DashboardPage /> },
                         { path: 'insights', element: <InsightsPage /> },
+                        { path: 'team', element: <TeamMembersPage /> },
                         { path: 'whitelist', element: <WhitelistPage /> },
-                        { path: 'profile', element: <ProfilePage /> },
                     ],
                 },
             ],

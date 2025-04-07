@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import insightService from "../../services/insightService";
+import fileService from "../../services/fileService";
 import axios, { AxiosProgressEvent } from "axios";
 import { Insight } from "../../types/Insight";
 import PreviewModal from "../shared/PreviewModal";
@@ -160,13 +161,13 @@ const InsightForm = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddI
                 }
                 // If URL didn't change but we have a thumbnail file, use that
                 else if (videoThumbnail) {
-                    const thumbnailRes = await insightService.uploadFile(videoThumbnail, config);
+                    const thumbnailRes = await fileService.uploadFile(videoThumbnail, config);
                     videoThumbnailUrl = thumbnailRes.path;
                 }
             } else {
                 // For uploaded videos - only update if new files are provided
                 if (videoThumbnail) {
-                    const thumbnailRes = await insightService.uploadFile(videoThumbnail, config);
+                    const thumbnailRes = await fileService.uploadFile(videoThumbnail, config);
                     videoThumbnailUrl = thumbnailRes.path;
                 } else if (insight?.video?.thumbnail && !insight.video.isExternal) {
                     // Keep existing thumbnail if no new one provided
@@ -174,7 +175,7 @@ const InsightForm = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddI
                 }
 
                 if (videoFile) {
-                    const videoRes = await insightService.uploadFile(videoFile, config);
+                    const videoRes = await fileService.uploadFile(videoFile, config);
                     finalVideoUrl = videoRes.path;
                 } else if (insight?.video?.url && !insight.video.isExternal) {
                     // Keep existing video if no new one provided
@@ -185,7 +186,7 @@ const InsightForm = ({ insight = null, mode = 'add', onSuccess, onCancel }: AddI
             // Handle article thumbnail - only update if changed
             let articleThumbnailUrl = insight?.article?.thumbnail || "";
             if (articleThumbnail) {
-                const thumbnailRes = await insightService.uploadFile(articleThumbnail, config);
+                const thumbnailRes = await fileService.uploadFile(articleThumbnail, config);
                 articleThumbnailUrl = thumbnailRes.path;
             }
 

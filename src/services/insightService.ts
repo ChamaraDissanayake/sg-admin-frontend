@@ -1,16 +1,19 @@
-import axios, { AxiosRequestConfig } from 'axios';
 import api from './api';
 import { Insight } from '../types/Insight';
 
 const insightService = {
     async fetchInsights(params?: { page?: number; limit?: number }) {
         const { page = 1, limit = 10 } = params || {};
+        console.log('Chamara', page, limit);
+
         const response = await api.get('/insights', {
             params: {
                 page,
                 limit
             }
         });
+        console.log('Chamara response', response);
+
         return {
             data: response.data.insights as Insight[],
             total: response.data.pagination.total
@@ -28,9 +31,7 @@ const insightService = {
             return response.data;
         } catch (error) {
             console.error('Error creating insight:', error);
-            throw new Error(
-                'Failed to create insight'
-            );
+            throw new Error('Failed to create insight');
         }
     },
 
@@ -54,61 +55,7 @@ const insightService = {
 
     async deleteInsight(id: string) {
         return api.delete(`/insights/${id}`);
-    },
-
-    async uploadFile(file: File, config?: AxiosRequestConfig<FormData>) {
-        try {
-            // Client-side size validation
-            if (file.size > 50 * 1024 * 1024) {
-                throw new Error('File exceeds 50MB limit');
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            // Merge custom config with default config
-            const mergedConfig: AxiosRequestConfig<FormData> = {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-                timeout: 300000, // 5 minute timeout for large files
-                ...config // Spread the custom config last to allow overrides
-            };
-
-            const response = await api.post('/files/upload', formData, mergedConfig);
-
-            // Handle duplicate response
-            if (response.data.isDuplicate) {
-                console.log('Using existing file:', response.data.fileId);
-            }
-
-            return response.data;
-        } catch (error: unknown) {
-            if (axios.isAxiosError(error)) {
-                if (error.response?.status === 413) {
-                    throw new Error('File too large (max 50MB)');
-                }
-            }
-            if (error instanceof Error) {
-                throw error;
-            }
-            throw new Error('Unknown upload error occurred');
-        }
-    },
-
-    /**
-     * Fetch all uploaded files
-     */
-    async fetchFiles() {
-        return api.get('/files');
-    },
-
-    /**
-     * Delete a file by ID
-     */
-    async deleteFile(id: number): Promise<void> {
-        await api.delete(`/files/${id}`);
-    },
+    }
 };
 
 export default insightService;

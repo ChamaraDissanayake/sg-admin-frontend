@@ -20,10 +20,8 @@ const InsightsPage = () => {
     const [hasMore, setHasMore] = useState(true);
     const [totalRecords, setTotalRecords] = useState(0);
 
-    const refreshInsights = useCallback(async (resetPage = true) => {
+    const refreshInsights = useCallback(async (resetPage = true, customPage = 1) => {
         try {
-            const targetPage = resetPage ? 1 : page;
-
             if (resetPage) {
                 setLoading(true);
             } else {
@@ -31,7 +29,7 @@ const InsightsPage = () => {
             }
 
             const response = await insightService.fetchInsights({
-                page: targetPage,
+                page: customPage,
                 limit: PAGE_SIZE
             });
 
@@ -40,6 +38,7 @@ const InsightsPage = () => {
                 setPage(1);
             } else {
                 setInsights(prev => [...prev, ...response.data]);
+                setPage(customPage);
             }
 
             setTotalRecords(response.total);
@@ -52,16 +51,19 @@ const InsightsPage = () => {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [page]);  // page is the only dependency used inside the function
+    }, []);
 
     useEffect(() => {
-        refreshInsights(true);
-    }, [refreshInsights]);  // Now properly included in dependencies
+        refreshInsights(true, 1);
+    }, [refreshInsights]);
 
     const loadMoreInsights = async () => {
         if (!hasMore || loadingMore) return;
-        await refreshInsights(false);
+
+        const nextPage = page + 1;
+        await refreshInsights(false, nextPage);
     };
+
 
     const handleAddClick = () => {
         setCurrentInsight({
